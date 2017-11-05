@@ -1,4 +1,4 @@
-(defproject bigsy/pg-embedded-clj "0.0.1"
+(defproject bigsy/clj-aiven "0.0.1"
   :description "Client lib for aiven api"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
