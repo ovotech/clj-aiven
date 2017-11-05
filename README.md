@@ -1,6 +1,6 @@
 # clj-aiven
 
-A Clojure library designed to interact with aiven api. At preset simply gets kafka topic information
+A Clojure library designed to interact with aiven api. At preset simply gets kafka topic information and can also calculate lag.
 
 ## Usage
 ```clojure
@@ -12,7 +12,9 @@ A Clojure library designed to interact with aiven api. At preset simply gets kaf
                  :token   "aivenv1 token"})
               
                  
-(topic-info aiven-conn "topic-name")              
+(topic-info aiven-conn "topic-name")
+
+(topic-consumer-lag conn "topic-name" "consumer-name")           
 
 
 ```

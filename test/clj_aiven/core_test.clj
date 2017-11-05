@@ -56,5 +56,5 @@
                                  {:status 200 :headers {} :body (json/generate-string topic-response)})}}
 
         (is (= [{:partition 0 :lag 6977911}
-                {:partition 1 :lag 0}] (get-topic-lag conn topic "wobble"))))))
+                {:partition 1 :lag 0}] (topic-consumer-lag conn topic "wobble"))))))
   )

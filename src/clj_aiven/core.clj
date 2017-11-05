@@ -21,7 +21,7 @@
           topic)]
     (get-http conn topic-endpoint)))
 
-(defn get-topic-lag [conn topic consumer-id]
+(defn topic-consumer-lag [conn topic consumer-id]
   (let [topics (topic-info conn topic)]
     (mapv #(let [p-offset (:latest_offset %)
                  offset   (first (filter (complement nil?)
