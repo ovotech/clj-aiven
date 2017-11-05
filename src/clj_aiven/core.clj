@@ -1,13 +1,14 @@
 (ns clj-aiven.core
   (:require [clj-http.client :as http]
-            [cheshire.core :as json]))
+            [cheshire.core :as json])
+  (:use com.rpl.specter))
 
 (def aiven-base "https://api.aiven.io/v1beta")
 
 (defn get-http [{:keys [token]} url]
   (:body (http/get url
            {:headers {:Authorization token}
-            :as      :auto})))
+            :as      :json})))
 
 (defn topic-info [{:keys [project
                           service]
@@ -19,3 +20,11 @@
           service
           topic)]
     (get-http conn topic-endpoint)))
+
+(defn get-topic-lag [conn topic consumer-id]
+  (let [topics (topic-info conn topic)]
+    (mapv #(let [p-offset (:latest_offset %)
+                 offset   (first (filter (complement nil?)
+                                   (map (fn [x] (when (= (:group_name x) consumer-id) (:offset x))) (:consumer_groups %))))]
+             (when offset (assoc (select-keys % [:partition]) :lag (- p-offset offset))))
+      (get-in topics [:topic :partitions]))))
