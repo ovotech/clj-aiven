@@ -18,36 +18,43 @@
 (defn- get-http
   [{:keys [token]} url]
   (:body (http/get url
-           {:headers {:Authorization token}
-            :as      :json})))
+                   {:headers {:Authorization (str "aivenv1 " token)}
+                    :as      :json})))
 
 (defn topic-info
   "Pulls back details of the specified topic."
   [{:keys [project service] :as conn} topic]
   (let [topic-endpoint
         (format "%s/project/%s/service/%s/topic/%s"
-          aiven-base
-          project
-          service
-          topic)]
+                aiven-base
+                project
+                service
+                topic)]
     (get-http conn topic-endpoint)))
 
 (s/fdef topic-info
-  :args {:conn  ::connection
-         :topic ::topic})
+        :args {:conn  ::connection
+               :topic ::topic})
+
+(defn- parse-topic-partition-offset
+  [{:keys [consumer_groups] :as partition} group-name]
+  (let [consumer-group (filter #(= group-name (:group_name %)) consumer_groups)]
+    (:offset (first consumer-group))))
 
 (defn topic-consumer-lag
   "Pulls back a vector of partition/lag pairs for the specified topic and consumer."
-  [conn topic consumer-id]
-  (let [topics (topic-info conn topic)]
-    (mapv #(let [p-offset (:latest_offset %)
-                 offset   (first (filter (complement nil?)
-                                   (map (fn [x] (when (= (:group_name x) consumer-id) (:offset x))) (:consumer_groups %))))]
-             (when offset (assoc (select-keys % [:partition]) :lag (- p-offset offset))))
-      (get-in topics [:topic :partitions]))))
+  [conn topic group-name]
+  (let [topic-data (topic-info conn topic)
+        partitions (->> (get-in topic-data [:topic :partitions])
+                        (map (fn [partition]
+                               (when-let [offset (parse-topic-partition-offset partition group-name)]
+                                 {:partition (:partition partition)
+                                  :lag       (- (:latest_offset partition) offset)}))))]
+    {:partitions partitions
+     :total-lag  (reduce + 0 (map :lag partitions))}))
 
 (s/fdef topic-consumer-lag
-  :args {:conn        ::connection
-         :topic       ::topic
-         :consumer-id string?}
-  :ret (s/coll-of ::partition-lag))
+        :args {:conn        ::connection
+               :topic       ::topic
+               :consumer-id string?}
+        :ret (s/coll-of (s/keys :req-un [::total-lag ::partitions])))
