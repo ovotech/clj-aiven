@@ -1,18 +1,29 @@
 (ns clj-aiven.core
   (:require [clj-http.client :as http]
-            [cheshire.core :as json])
-  (:use com.rpl.specter))
+            [cheshire.core :as json]
+            [clojure.spec.alpha :as s]))
 
-(def aiven-base "https://api.aiven.io/v1beta")
+(s/def ::topic string?)
+(s/def ::project string?)
+(s/def ::service string?)
+(s/def ::token string?)
+(s/def ::connection (s/keys :req-un [::project ::service ::token]))
 
-(defn get-http [{:keys [token]} url]
+(s/def ::partition integer?)
+(s/def ::lag integer?)
+(s/def ::partition-lag (s/keys :req-un [::partition ::lag]))
+
+(def ^:private aiven-base "https://api.aiven.io/v1beta")
+
+(defn- get-http
+  [{:keys [token]} url]
   (:body (http/get url
            {:headers {:Authorization token}
             :as      :json})))
 
-(defn topic-info [{:keys [project
-                          service]
-                   :as   conn} topic]
+(defn topic-info
+  "Pulls back details of the specified topic."
+  [{:keys [project service] :as conn} topic]
   (let [topic-endpoint
         (format "%s/project/%s/service/%s/topic/%s"
           aiven-base
@@ -21,10 +32,22 @@
           topic)]
     (get-http conn topic-endpoint)))
 
-(defn topic-consumer-lag [conn topic consumer-id]
+(s/fdef topic-info
+  :args {:conn  ::connection
+         :topic ::topic})
+
+(defn topic-consumer-lag
+  "Pulls back a vector of partition/lag pairs for the specified topic and consumer."
+  [conn topic consumer-id]
   (let [topics (topic-info conn topic)]
     (mapv #(let [p-offset (:latest_offset %)
                  offset   (first (filter (complement nil?)
                                    (map (fn [x] (when (= (:group_name x) consumer-id) (:offset x))) (:consumer_groups %))))]
              (when offset (assoc (select-keys % [:partition]) :lag (- p-offset offset))))
       (get-in topics [:topic :partitions]))))
+
+(s/fdef topic-consumer-lag
+  :args {:conn        ::connection
+         :topic       ::topic
+         :consumer-id string?}
+  :ret (s/coll-of ::partition-lag))
