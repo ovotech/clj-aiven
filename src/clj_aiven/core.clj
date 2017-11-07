@@ -49,7 +49,8 @@
                         (map (fn [partition]
                                (when-let [offset (parse-topic-partition-offset partition group-name)]
                                  {:partition (:partition partition)
-                                  :lag       (- (:latest_offset partition) offset)}))))]
+                                  :lag       (- (:latest_offset partition) offset)})))
+                        (filter some?))]
     {:partitions partitions
      :total-lag  (reduce + 0 (map :lag partitions))}))
 
