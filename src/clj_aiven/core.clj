@@ -55,7 +55,7 @@
      :total-lag  (reduce + 0 (map :lag partitions))}))
 
 (s/fdef topic-consumer-lag
-        :args {:conn        ::connection
-               :topic       ::topic
-               :consumer-id string?}
+        :args {:conn       ::connection
+               :topic      ::topic
+               :group-name string?}
         :ret (s/coll-of (s/keys :req-un [::total-lag ::partitions])))
