@@ -32,7 +32,7 @@
                 topic)]
     (get-http conn topic-endpoint)))
 
-(s/fdef topic-info
+#_(s/fdef topic-info
         :args {:conn  ::connection
                :topic ::topic})
 
@@ -54,7 +54,7 @@
     {:partitions partitions
      :total-lag  (reduce + 0 (map :lag partitions))}))
 
-(s/fdef topic-consumer-lag
+#_(s/fdef topic-consumer-lag
         :args {:conn       ::connection
                :topic      ::topic
                :group-name string?}
