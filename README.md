@@ -1,9 +1,10 @@
 # clj-aiven
 
-A Clojure library designed to interact with aiven api. At preset simply gets kafka topic information and can also calculate lag.
+A Clojure library designed to interact with aiven api.
 
 ## Usage
 ```clojure
+;Get topic lag
 (require 'clj-aiven.core)
 
 
@@ -17,4 +18,14 @@ A Clojure library designed to interact with aiven api. At preset simply gets kaf
 (topic-consumer-lag conn "topic-name" "consumer-name")           
 
 
+----------------------------------------------------------------------------------
+
+
+;Get topic sizes
+
+(def schema-conn {:url  "https://kafka-uat.ovo-uat.aivencloud.com:13584"
+                  :user "user"
+                  :pass "password"})
+                  
+(list-topic-sizes conn schema-conn)                  
 ```
