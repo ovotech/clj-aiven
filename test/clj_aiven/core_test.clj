@@ -2,8 +2,11 @@
   (:require [clojure.test :refer :all]
             [clj-aiven.core :refer :all]
             [cheshire.core :as json]
-            [clj-http.util :as util])
+            [clj-http.util :as util]
+            [clojure.spec.test.alpha :as stest])
   (:use clj-http.fake))
+
+(stest/instrument)
 
 (def conn {:project "project"
            :service "service"
@@ -41,10 +44,13 @@
                                (assert-auth request)
                                {:status 200 :headers {} :body (json/generate-string topic-response)})}}
 
-                      (let [result (topic-consumer-lag conn topic "wobble")]
-                        (is (= 6977920 (:total-lag result)) "total lag matches")
-
-                        (is (= [{:partition 0 :lag 6977911}
-                                {:partition 1 :lag 9}]
-                               (:partitions result)) "partition lags match")))))
+                      (let [result (topic-consumer-lag conn topic ["wobble" "bobble"])]
+                        (is (= {:partitions [{:partition 0 :lag 6977911}
+                                             {:partition 1 :lag 9}]
+                                :total-lag  6977920}
+                               (get result "wobble")) "wobble partition lags match")
+                        (is (= {:partitions [{:partition 0 :lag 0}
+                                             {:partition 1 :lag 0}]
+                                :total-lag  0}
+                               (get result "bobble")) "bobble partition lags match")))))
 
