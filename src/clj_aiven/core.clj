@@ -3,6 +3,7 @@
             [cheshire.core :as json]
             [clojure.spec.alpha :as s]
             [clojure.string :as string]))
+
 (s/def ::non-blank-string
   (s/and string?
          (complement string/blank?)))
@@ -11,7 +12,6 @@
 (s/def ::service ::non-blank-string)
 (s/def ::token ::non-blank-string)
 (s/def ::connection (s/keys :req-un [::project ::service ::token]))
-
 
 (s/def ::partition nat-int?)
 (s/def ::lag nat-int?)
@@ -47,25 +47,22 @@
     (:offset (first consumer-group))))
 
 (defn topic-consumer-lag
-  "Pulls back a vector of partition/lag pairs for the specified topic and consumer groups."
-  [conn topic group-names]
-  (let [topic-data (topic-info conn topic)]
-    (reduce (fn [acc group-name]
-              (let [partitions (->> (get-in topic-data [:topic :partitions])
-                                    (map (fn [partition]
-                                           (when-let [offset (parse-topic-partition-offset partition group-name)]
-                                             {:partition (:partition partition)
-                                              :lag       (- (:latest_offset partition) offset)})))
-                                    (filter some?))]
-                (assoc acc group-name
-                           {:partitions partitions
-                            :total-lag  (reduce + 0 (map :lag partitions))})))
-            {} group-names)))
+  "Pulls back a vector of partition/lag pairs for the specified topic and consumer."
+  [conn topic group-name]
+  (let [topic-data (topic-info conn topic)
+        partitions (->> (get-in topic-data [:topic :partitions])
+                        (map (fn [partition]
+                               (when-let [offset (parse-topic-partition-offset partition group-name)]
+                                 {:partition (:partition partition)
+                                  :lag       (- (:latest_offset partition) offset)})))
+                        (filter some?))]
+    {:partitions partitions
+     :total-lag  (reduce + 0 (map :lag partitions))}))
 
 (s/fdef topic-consumer-lag
         :args (s/cat :conn ::connection
                      :topic ::topic
-                     :group-names (s/coll-of ::non-blank-string))
+                     :group-name ::non-blank-string)
         :ret (s/coll-of (s/keys :req-un [::total-lag ::partitions])))
 
 (defn get-subjects
