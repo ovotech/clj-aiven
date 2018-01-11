@@ -1,16 +1,20 @@
 (ns clj-aiven.core
   (:require [clj-http.client :as http]
             [cheshire.core :as json]
-            [clojure.spec.alpha :as s]))
-
-(s/def ::topic string?)
-(s/def ::project string?)
-(s/def ::service string?)
-(s/def ::token string?)
+            [clojure.spec.alpha :as s]
+            [clojure.string :as string]))
+(s/def ::non-blank-string
+  (s/and string?
+         (complement string/blank?)))
+(s/def ::topic ::non-blank-string)
+(s/def ::project ::non-blank-string)
+(s/def ::service ::non-blank-string)
+(s/def ::token ::non-blank-string)
 (s/def ::connection (s/keys :req-un [::project ::service ::token]))
 
-(s/def ::partition integer?)
-(s/def ::lag integer?)
+
+(s/def ::partition nat-int?)
+(s/def ::lag nat-int?)
 (s/def ::partition-lag (s/keys :req-un [::partition ::lag]))
 
 (def ^:private aiven-base "https://api.aiven.io/v1beta")
@@ -33,9 +37,9 @@
                 topic)]
     (get-http conn topic-endpoint)))
 
-#_(s/fdef topic-info
-          :args {:conn  ::connection
-                 :topic ::topic})
+(s/fdef topic-info
+        :args (s/cat :conn ::connection
+                     :topic ::topic))
 
 (defn- parse-topic-partition-offset
   [{:keys [consumer_groups] :as partition} group-name]
@@ -43,18 +47,26 @@
     (:offset (first consumer-group))))
 
 (defn topic-consumer-lag
-  "Pulls back a vector of partition/lag pairs for the specified topic and consumer."
-  [conn topic group-name]
-  (let [topic-data (topic-info conn topic)
-        partitions (->> (get-in topic-data [:topic :partitions])
-                        (map (fn [partition]
-                               (when-let [offset (parse-topic-partition-offset partition group-name)]
-                                 {:partition (:partition partition)
-                                  :lag       (- (:latest_offset partition) offset)})))
-                        (filter some?))]
-    {:partitions partitions
-     :total-lag  (reduce + 0 (map :lag partitions))}))
+  "Pulls back a vector of partition/lag pairs for the specified topic and consumer groups."
+  [conn topic group-names]
+  (let [topic-data (topic-info conn topic)]
+    (reduce (fn [acc group-name]
+              (let [partitions (->> (get-in topic-data [:topic :partitions])
+                                    (map (fn [partition]
+                                           (when-let [offset (parse-topic-partition-offset partition group-name)]
+                                             {:partition (:partition partition)
+                                              :lag       (- (:latest_offset partition) offset)})))
+                                    (filter some?))]
+                (assoc acc group-name
+                           {:partitions partitions
+                            :total-lag  (reduce + 0 (map :lag partitions))})))
+            {} group-names)))
 
+(s/fdef topic-consumer-lag
+        :args (s/cat :conn ::connection
+                     :topic ::topic
+                     :group-names (s/coll-of ::non-blank-string))
+        :ret (s/coll-of (s/keys :req-un [::total-lag ::partitions])))
 
 (defn get-subjects
   [{:keys [url user pass] :as conn}]
@@ -83,10 +95,3 @@
   (doall (let [subjects (get-subjects schema-conn)
                topics   (map #(clojure.string/replace % #"-value" "") subjects)]
            (reverse (sort-by :total-size-KBs (map #(topic-size conn %) topics))))))
-
-
-#_(s/fdef topic-consumer-lag
-          :args {:conn       ::connection
-                 :topic      ::topic
-                 :group-name string?}
-          :ret (s/coll-of (s/keys :req-un [::total-lag ::partitions])))
