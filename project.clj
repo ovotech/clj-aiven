@@ -1,4 +1,4 @@
-(defproject ovotech/clj-aiven "0.2.0"
+(defproject ovotech/clj-aiven "0.3.0"
   :description "Client lib for aiven api"
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
