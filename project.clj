@@ -1,5 +1,5 @@
 (defproject ovotech/clj-aiven "0.3.1-SNAPSHOT"
-  :description "Client lib for aiven api"
+  :description "Delete me"
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[cheshire "5.8.0"]
